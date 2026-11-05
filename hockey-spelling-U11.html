@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Spelling Shootout</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ice: #eef7fc;
+    --ice-line: #cfe6f3;
+    --navy: #0b2545;
+    --red: #d62839;
+    --blue: #1d5fbf;
+    --gold: #f2b705;
+    --green: #2a9d5c;
+    --white: #ffffff;
+    --shadow: 0 6px 18px rgba(11,37,69,.18);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: 'Nunito', system-ui, sans-serif; color: var(--navy);
+    background: var(--ice);
+    background-image:
+      linear-gradient(90deg, transparent 49.6%, rgba(214,40,57,.35) 49.6%, rgba(214,40,57,.35) 50.4%, transparent 50.4%),
+      linear-gradient(90deg, transparent 30%, rgba(29,95,191,.25) 30%, rgba(29,95,191,.25) 31%, transparent 31%, transparent 69%, rgba(29,95,191,.25) 69%, rgba(29,95,191,.25) 70%, transparent 70%);
+  }
+  h1, h2, .bungee { font-family: 'Bungee', 'Arial Black', sans-serif; letter-spacing: .5px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+  header { text-align: center; padding: 10px 0 4px; }
+  header h1 { margin: 0; font-size: clamp(26px, 5vw, 44px); color: var(--navy); text-shadow: 3px 3px 0 var(--white), 5px 5px 0 var(--red); }
+  .card { background: var(--white); border-radius: 18px; box-shadow: var(--shadow); padding: 22px; margin: 16px 0; border: 4px solid var(--navy); }
+  .hidden { display: none !important; }
+
+  /* Scoreboard */
+  .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;
+    background: #111; color: #fff; border-radius: 14px; padding: 12px 16px; border: 4px solid #333; box-shadow: var(--shadow); }
+  .sb-box { text-align: center; }
+  .sb-label { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #bbb; }
+  .sb-num { font-family: 'Bungee', monospace; font-size: 40px; color: var(--gold); text-shadow: 0 0 10px rgba(242,183,5,.7); }
+  .sb-mid { text-align: center; }
+  .sound-btn { margin-top: 6px; font-size: 13px; padding: 4px 10px; border-radius: 8px; background: #333; box-shadow: none; }
+  .sb-period { font-family: 'Bungee', monospace; color: #ff5a5a; font-size: 18px; }
+  .sb-count { font-size: 15px; color: #ddd; margin-top: 2px; }
+
+  /* Rink */
+  .rink { position: relative; height: 150px; border-radius: 70px; background: var(--ice); border: 4px solid var(--navy); overflow: hidden; margin: 16px 0; }
+  .rink::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 6px; margin-left: -3px; background: var(--red); opacity: .5; }
+  .rink .crease { position: absolute; right: 38px; top: 50%; width: 70px; height: 90px; margin-top: -45px; border-radius: 45px 0 0 45px; background: rgba(29,95,191,.25); border: 3px solid var(--red); border-right: none; }
+  .rink .net { position: absolute; right: 12px; top: 50%; width: 30px; height: 64px; margin-top: -32px; border: 4px solid var(--red);
+    background: repeating-linear-gradient(45deg, #fff 0 4px, #ccc 4px 6px), repeating-linear-gradient(-45deg, transparent 0 4px, #ccc 4px 6px); border-radius: 6px 0 0 6px; }
+  .goalie { position: absolute; right: 52px; top: 50%; font-size: 44px; margin-top: -28px; transition: transform .25s; }
+  .puck { position: absolute; left: 40px; top: 50%; width: 26px; height: 14px; margin-top: -7px; background: #111; border-radius: 50%; box-shadow: 0 3px 0 #444; }
+  .stick { position: absolute; left: 14px; top: 50%; font-size: 46px; margin-top: -30px; }
+  .puck.shoot-goal { animation: goal .7s ease-in forwards; }
+  .puck.shoot-save { animation: save .9s ease-in-out forwards; }
+  @keyframes goal { 0% { left: 40px; } 100% { left: calc(100% - 38px); top: 46%; } }
+  @keyframes save { 0% { left: 40px; } 55% { left: calc(100% - 110px); top: 50%; } 100% { left: 45%; top: 15%; } }
+  .goalie.dive { transform: translateY(-14px) rotate(-12deg); }
+  .rink-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 52px; pointer-events: none; opacity: 0; }
+  .rink-msg.show { animation: pop 1.4s ease forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.4); } 20% { opacity: 1; transform: scale(1.15); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+  .goal-light { position: absolute; right: 18px; top: 8px; width: 20px; height: 20px; border-radius: 50%; background: #600; }
+  .goal-light.on { background: #ff2a2a; box-shadow: 0 0 20px 8px rgba(255,42,42,.7); }
+
+  /* Word area */
+  .word-num { font-family: 'Bungee', sans-serif; color: var(--blue); font-size: 18px; text-align: center; }
+  .sentence { font-size: clamp(20px, 3.2vw, 30px); text-align: center; line-height: 1.5; margin: 14px 0 20px; font-weight: 800; }
+  .sentence .blank { display: inline-block; min-width: 120px; border-bottom: 4px solid var(--navy); }
+  .reveal-word { font-family: 'Bungee', sans-serif; font-size: clamp(38px, 8vw, 72px); text-align: center; color: var(--red); letter-spacing: 6px; margin: 10px 0; word-break: break-word; }
+  .cover { font-family: 'Bungee', sans-serif; font-size: clamp(30px, 6vw, 54px); text-align: center; color: #fff; letter-spacing: 6px;
+    background: repeating-linear-gradient(45deg, var(--navy) 0 14px, #143a66 14px 28px); border-radius: 14px; padding: 18px; margin: 0 auto 10px; max-width: 520px; cursor: pointer; user-select: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 10px 0; }
+  button { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 19px; border: none; border-radius: 12px; padding: 14px 22px; cursor: pointer;
+    color: #fff; background: var(--blue); box-shadow: 0 4px 0 rgba(0,0,0,.25); transition: transform .08s; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.red { background: var(--red); }
+  button.green { background: var(--green); }
+  button.gold { background: var(--gold); color: var(--navy); }
+  button.navy { background: var(--navy); }
+  button.ghost { background: #e4eef6; color: var(--navy); }
+  button.big { font-size: 24px; padding: 18px 30px; }
+  .status { text-align: center; font-size: 14px; color: #557; min-height: 20px; }
+  .question { text-align: center; font-size: 22px; font-weight: 800; margin-top: 14px; }
+  a.mw { color: var(--blue); font-weight: 800; }
+
+  /* Setup */
+  .setup-grid { display: grid; grid-template-columns: 34px 1fr 2.2fr; gap: 6px 8px; align-items: center; }
+  .setup-grid input { font: inherit; font-size: 15px; padding: 7px 9px; border: 2px solid var(--ice-line); border-radius: 8px; width: 100%; }
+  .setup-grid .n { font-weight: 800; text-align: right; color: var(--blue); }
+  .setup-grid .hdr { font-weight: 800; font-size: 13px; text-transform: uppercase; color: #557; }
+  .tip { background: #fff7dc; border-left: 5px solid var(--gold); padding: 10px 14px; border-radius: 8px; font-size: 15px; margin: 12px 0; }
+
+  /* Intermission & results */
+  .center { text-align: center; }
+  .zamboni { font-size: 70px; }
+  .big-note { font-size: clamp(22px, 4vw, 34px); font-weight: 800; margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 17px; }
+  th, td { padding: 8px 10px; border-bottom: 2px solid var(--ice-line); text-align: left; }
+  th { background: var(--navy); color: #fff; }
+  .ok { color: var(--green); font-weight: 800; }
+  .no { color: var(--red); font-weight: 800; }
+  .bonus-tag { color: #b07d00; font-weight: 800; }
+
+  @media (max-width: 640px) {
+    .setup-grid { grid-template-columns: 24px 1fr; }
+    .setup-grid .sent { grid-column: 2; margin-bottom: 8px; }
+    .setup-grid .hdr.h3 { display: none; }
+    .sb-num { font-size: 30px; }
+    .rink-msg { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>🏒 Spelling Shootout 🥅</h1></header>
+
+  <!-- SETUP -->
+  <section id="setup" class="card">
+    <h2 style="margin-top:0">Set Your Line-Up (20 Words)</h2>
+    <div class="tip">Type each spelling word and a sentence that uses it. The game automatically hides the word with a blank.
+      Your list is saved in this browser so it will be here next time.</div>
+    <div class="setup-grid" id="setupGrid">
+      <div></div><div class="hdr">Word</div><div class="hdr h3">Sentence</div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:800"><input type="checkbox" id="shuffle"> Shuffle word order</label>
+    </div>
+    <div class="row">
+      <button class="ghost" id="resetDefaults">Load sample words</button>
+      <button class="ghost" id="clearAll">Clear all</button>
+      <button class="red big" id="startBtn">Drop the Puck! ▶</button>
+    </div>
+    <div class="status" id="setupMsg"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="hidden">
+    <div class="scoreboard">
+      <div class="sb-box"><div class="sb-label">Goals ✅</div><div class="sb-num" id="sbGoals">0</div></div>
+      <div class="sb-mid"><div class="sb-period" id="sbPeriod">1ST PERIOD</div><div class="sb-count" id="sbCount">Word 1 of 20</div><button class="sound-btn" id="soundBtn">🔊 Sound On</button></div>
+      <div class="sb-box"><div class="sb-label">Saves 🧤</div><div class="sb-num" id="sbSaves">0</div></div>
+    </div>
+
+    <div class="rink" id="rink">
+      <div class="goal-light" id="goalLight"></div>
+      <div class="crease"></div>
+      <div class="net"></div>
+      <div class="goalie" id="goalie">🧤</div>
+      <div class="stick">🏒</div>
+      <div class="puck" id="puck"></div>
+      <div class="rink-msg" id="rinkMsg"></div>
+    </div>
+
+    <div class="card">
+      <div class="word-num" id="wordNum">Word 1</div>
+      <div class="sentence" id="sentence"></div>
+      <div class="row">
+        <button class="big" id="sayBoth">🔊 Say Word + Sentence</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="sayWord">🔁 Word only</button>
+        <button class="ghost" id="saySentence">🔁 Sentence only</button>
+      </div>
+      <div class="status" id="audioStatus"></div>
+
+      <div id="preReveal" style="margin-top:20px">
+        <div class="cover" id="cover" title="Click to reveal">🥅 ? ? ? 🥅</div>
+        <div class="row"><button class="gold big" id="revealBtn">👀 Reveal the Word</button></div>
+      </div>
+
+      <div id="postReveal" class="hidden">
+        <div class="reveal-word" id="revealWord"></div>
+        <div class="center"><a class="mw" id="mwLink" target="_blank" rel="noopener">Look it up on Merriam-Webster ↗</a></div>
+        <div class="question">Did you spell it correctly?</div>
+        <div class="row">
+          <button class="green big" id="yesBtn">✅ Yes — Shoot!</button>
+          <button class="red big" id="noBtn">❌ No</button>
+        </div>
+      </div>
+
+      <div id="nextRow" class="row hidden">
+        <button class="navy big" id="nextBtn">Next Word ➜</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERMISSION -->
+  <section id="intermission" class="card center hidden">
+    <div class="zamboni">🚜🧊</div>
+    <h2>Intermission!</h2>
+    <p class="big-note" id="interScore"></p>
+    <p class="big-note">📝 Turn over your sheet of paper<br>or get a new one!</p>
+    <p style="font-size:20px">Next up: <b>OVERTIME BONUS ROUND</b> — you get another shot at the <span id="interCount"></span> you missed.</p>
+    <div class="row"><button class="red big" id="startBonus">I'm Ready — Start Overtime! 🏒</button></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="card hidden">
+    <div class="center">
+      <div style="font-size:64px" id="resultEmoji">🏆</div>
+      <h2 id="resultTitle">Final Buzzer!</h2>
+      <p class="big-note" id="resultSummary"></p>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Word</th><th>Regulation</th><th>Overtime</th></tr></thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+    <div class="tip" id="practiceList" style="margin-top:16px"></div>
+    <div class="row">
+      <button class="navy" id="playAgain">Play Again (same words)</button>
+      <button class="ghost" id="editWords">Edit Words</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const DEFAULTS = [
+  ["clothesline", "Mom hung my wet hockey socks on the clothesline to dry."],
+  ["vice-president", "The vice-president of the hockey club handed out the trophies."],
+  ["textbook", "I read my science textbook on the bus ride to the tournament."],
+  ["breathtaking", "The goalie made a breathtaking save in the final second."],
+  ["spacecraft", "Our team mascot dresses like an astronaut climbing out of a spacecraft."],
+  ["forty-nine", "The arena has forty-nine rows of seats."],
+  ["elsewhere", "The rink was closed, so we had to practice elsewhere."],
+  ["saddlebag", "The rancher packed a puck in his saddlebag and rode to the frozen pond."],
+  ["watchdog", "Our watchdog barks every time a puck hits the garage door."],
+  ["two-thirds", "Our team won two-thirds of its games this season."],
+  ["downpour", "A sudden downpour soaked the fans walking to the arena."],
+  ["skateboard", "In summer I ride my skateboard, but in winter I lace up my skates."],
+  ["storehouse", "The Zamboni is parked in a storehouse behind the rink."],
+  ["rainwater", "Rainwater froze on the backyard rink overnight."],
+  ["barbershop", "The whole team got haircuts at the barbershop before the big game."],
+  ["bystander", "A bystander caught the puck when it flew over the glass."],
+  ["nearsighted", "The nearsighted coach needed his glasses to read the scoreboard."],
+  ["outstanding", "Our captain had an outstanding game with three goals."],
+  ["solar system", "We named our hockey lines after the planets in the solar system."],
+  ["air conditioner", "Stepping onto the ice felt like standing in front of a giant air conditioner."]
+];
+const STORE_KEY = "hockeySpelling.words.unit11";
+const $ = id => document.getElementById(id);
+
+// ---------- Setup ----------
+function loadWords() {
+  try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (Array.isArray(s) && s.length === 20) return s; } catch (e) {}
+  return DEFAULTS.map(r => r.slice());
+}
+function saveWords(list) { try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) {} }
+
+function buildSetup(list) {
+  const grid = $("setupGrid");
+  grid.querySelectorAll(".r").forEach(el => el.remove());
+  list.forEach(([w, s], i) => {
+    const n = document.createElement("div"); n.className = "n r"; n.textContent = i + 1;
+    const wi = document.createElement("input"); wi.className = "r w"; wi.value = w; wi.placeholder = "word";
+    const si = document.createElement("input"); si.className = "r sent"; si.value = s; si.placeholder = "Sentence using the word";
+    grid.append(n, wi, si);
+  });
+}
+function readSetup() {
+  const ws = [...document.querySelectorAll("#setupGrid input.w")];
+  const ss = [...document.querySelectorAll("#setupGrid input.sent")];
+  return ws.map((w, i) => [w.value.trim(), ss[i].value.trim()]);
+}
+
+// ---------- Sentence blanking ----------
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function blankRegex(word) { return new RegExp("\\b" + escapeRe(word) + "\\w*", "gi"); }
+function displaySentence(word, sentence) {
+  const safe = sentence.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  if (/_{2,}/.test(safe)) return safe.replace(/_{2,}/g, '<span class="blank">&nbsp;</span>');
+  return safe.replace(blankRegex(word), '<span class="blank">&nbsp;</span>');
+}
+function spokenSentence(word, sentence) {
+  if (/_{2,}/.test(sentence)) return sentence.replace(/_{2,}/g, word);
+  return sentence; // read the full sentence aloud with the word in it
+}
+
+// ---------- Audio ----------
+const audioCache = {};
+async function getDictionaryAudio(word) {
+  if (word in audioCache) return audioCache[word];
+  let url = null;
+  try {
+    const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word.toLowerCase()));
+    if (r.ok) {
+      const data = await r.json();
+      const all = data.flatMap(e => (e.phonetics || []).map(p => p.audio)).filter(Boolean);
+      url = all.find(a => /-us\.mp3$/.test(a)) || all[0] || null;
+    }
+  } catch (e) {}
+  audioCache[word] = url;
+  return url;
+}
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  return vs.find(v => /en-US/i.test(v.lang) && /Natural|Google|Aria|Jenny|Samantha/i.test(v.name))
+      || vs.find(v => /en-US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+function speak(text, rate = 0.85) {
+  return new Promise(res => {
+    if (!("speechSynthesis" in window)) return res();
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = pickVoice(); if (v) u.voice = v;
+    u.rate = rate; u.onend = res; u.onerror = res;
+    speechSynthesis.speak(u);
+  });
+}
+function playUrl(url) {
+  return new Promise(res => {
+    const a = new Audio(url);
+    a.onended = () => res(true); a.onerror = () => res(false);
+    a.play().catch(() => res(false));
+  });
+}
+let speaking = false;
+function setAudioButtons(dis) { ["sayBoth", "sayWord", "saySentence"].forEach(id => $(id).disabled = dis); }
+async function sayWord(word) {
+  $("audioStatus").textContent = "Fetching dictionary pronunciation…";
+  const url = await getDictionaryAudio(word);
+  if (url && await playUrl(url)) { $("audioStatus").textContent = "🔊 Pronunciation from online dictionary"; return; }
+  $("audioStatus").textContent = "🔊 Using computer voice (no dictionary recording found)";
+  await speak(word, 0.75);
+}
+async function runAudio(fn) {
+  if (speaking) return;
+  speaking = true; setAudioButtons(true);
+  try { await fn(); } finally { speaking = false; setAudioButtons(false); }
+}
+const pause = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------- Sound effects (built in, no downloads) ----------
+const SOUND_KEY = "hockeySpelling.sound.v1";
+let soundOn = true;
+try { soundOn = localStorage.getItem(SOUND_KEY) !== "off"; } catch (e) {}
+let actx = null;
+function ctx() {
+  if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; actx = new AC(); }
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+function noise(c, secs) {
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * secs), c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(); src.buffer = buf; return src;
+}
+function env(c, peak, attack, hold, release) {
+  const g = c.createGain(), t = c.currentTime;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + attack);
+  g.gain.setValueAtTime(peak, t + attack + hold);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + hold + release);
+  g.connect(c.destination); return g;
+}
+const sfx = {
+  // stick hitting the puck
+  slap() {
+    const c = soundOn && ctx(); if (!c) return;
+    const n = noise(c, 0.12), f = c.createBiquadFilter();
+    f.type = "highpass"; f.frequency.value = 1500;
+    n.connect(f); f.connect(env(c, 0.6, 0.003, 0.01, 0.08)); n.start();
+  },
+  // arena goal horn
+  horn() {
+    const c = soundOn && ctx(); if (!c) return;
+    const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1100;
+    f.connect(env(c, 0.22, 0.06, 1.6, 0.4));
+    [116, 146, 174, 233].forEach(hz => {
+      const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.value = hz;
+      o.connect(f); o.start(); o.stop(c.currentTime + 2.2);
+    });
+  },
+  // crowd cheering
+  cheer() {
+    const c = soundOn && ctx(); if (!c) return;
+    const n = noise(c, 3.2), f = c.createBiquadFilter();
+    f.type = "bandpass"; f.frequency.value = 1300; f.Q.value = 0.6;
+    n.connect(f); f.connect(env(c, 0.35, 0.35, 1.0, 1.8)); n.start();
+  },
+  // puck hitting the goalie's pad
+  thud() {
+    const c = soundOn && ctx(); if (!c) return;
+    const o = c.createOscillator(), t = c.currentTime;
+    o.type = "sine"; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.2);
+    o.connect(env(c, 0.7, 0.005, 0.02, 0.22)); o.start(); o.stop(t + 0.3);
+    const n = noise(c, 0.1), f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 700;
+    n.connect(f); f.connect(env(c, 0.4, 0.002, 0.01, 0.07)); n.start();
+  },
+  // crowd "ohhh"
+  groan() {
+    const c = soundOn && ctx(); if (!c) return;
+    const n = noise(c, 1.8), f = c.createBiquadFilter(), t = c.currentTime;
+    f.type = "bandpass"; f.Q.value = 2; f.frequency.setValueAtTime(650, t); f.frequency.exponentialRampToValueAtTime(350, t + 1.5);
+    n.connect(f); f.connect(env(c, 0.3, 0.25, 0.4, 1.0)); n.start();
+  }
+};
+function renderSoundBtn() { $("soundBtn").textContent = soundOn ? "🔊 Sound On" : "🔇 Sound Off"; }
+
+// ---------- Game state ----------
+let words = [];       // [{word, sentence, idx}]
+let queue = [];       // current round list
+let pos = 0;
+let round = "main";   // "main" | "bonus"
+let goals = 0, saves = 0;
+let results = {};     // idx -> {main: bool, bonus: bool|undefined}
+
+function show(id) { ["setup", "game", "intermission", "results"].forEach(s => $(s).classList.toggle("hidden", s !== id)); window.scrollTo(0, 0); }
+
+function startGame(list, shuffle) {
+  words = list.map(([w, s], i) => ({ word: w, sentence: s, idx: i }));
+  queue = words.slice();
+  if (shuffle) queue.sort(() => Math.random() - 0.5);
+  round = "main"; pos = 0; goals = 0; saves = 0; results = {};
+  show("game"); renderWord();
+}
+
+function periodLabel() {
+  if (round === "bonus") return "OVERTIME";
+  return pos < 10 ? "1ST PERIOD" : "2ND PERIOD";
+}
+let timers = [];
+function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+function resetRink() {
+  timers.forEach(clearTimeout); timers = [];
+  const p = $("puck"); p.className = "puck"; void p.offsetWidth;
+  $("goalie").classList.remove("dive"); $("goalLight").classList.remove("on");
+  $("rinkMsg").className = "rink-msg";
+}
+function renderWord() {
+  const w = queue[pos];
+  resetRink();
+  $("sbGoals").textContent = goals; $("sbSaves").textContent = saves;
+  $("sbPeriod").textContent = periodLabel();
+  $("sbCount").textContent = `Word ${pos + 1} of ${queue.length}`;
+  $("wordNum").textContent = (round === "bonus" ? "Overtime Shot " : "Word ") + (pos + 1);
+  $("sentence").innerHTML = displaySentence(w.word, w.sentence);
+  $("revealWord").textContent = "";
+  $("mwLink").removeAttribute("href");
+  $("preReveal").classList.remove("hidden");
+  $("postReveal").classList.add("hidden");
+  $("nextRow").classList.add("hidden");
+  $("yesBtn").disabled = $("noBtn").disabled = false;
+  $("audioStatus").textContent = "";
+  getDictionaryAudio(w.word); // prefetch
+}
+
+function shoot(correct) {
+  const w = queue[pos];
+  $("yesBtn").disabled = $("noBtn").disabled = true;
+  if (!results[w.idx]) results[w.idx] = {};
+  results[w.idx][round] = correct;
+  const p = $("puck"), msg = $("rinkMsg");
+  if (correct) {
+    goals++;
+    p.classList.add("shoot-goal"); sfx.slap();
+    later(() => { sfx.horn(); sfx.cheer(); $("goalLight").classList.add("on"); msg.textContent = "🚨 GOAL! 🚨"; msg.style.color = "var(--red)"; msg.classList.add("show"); }, 650);
+  } else {
+    saves++;
+    p.classList.add("shoot-save"); sfx.slap();
+    later(() => { sfx.thud(); sfx.groan(); $("goalie").classList.add("dive"); }, 450);
+    later(() => { msg.textContent = "SAVE! 🧤"; msg.style.color = "var(--blue)"; msg.classList.add("show"); }, 600);
+  }
+  later(() => {
+    $("sbGoals").textContent = goals; $("sbSaves").textContent = saves;
+    $("nextRow").classList.remove("hidden");
+    $("nextBtn").textContent = pos + 1 < queue.length ? "Next Word ➜" : (round === "main" ? "End of Regulation ➜" : "Final Buzzer ➜");
+    $("nextBtn").focus();
+  }, 900);
+}
+
+function next() {
+  pos++;
+  if (pos < queue.length) return renderWord();
+  if (round === "main") {
+    const missed = queue.filter(w => !results[w.idx].main);
+    if (missed.length === 0) return showResults();
+    $("interScore").textContent = `End of regulation: ${goals} goal${goals === 1 ? "" : "s"} out of ${queue.length}!`;
+    $("interCount").textContent = missed.length === 1 ? "1 word" : missed.length + " words";
+    queue = missed; show("intermission");
+  } else {
+    showResults();
+  }
+}
+
+function startBonus() { round = "bonus"; pos = 0; show("game"); renderWord(); }
+
+function showResults() {
+  const mainCorrect = words.filter(w => results[w.idx]?.main).length;
+  const bonusCorrect = words.filter(w => results[w.idx]?.bonus === true).length;
+  const stillMissed = words.filter(w => !results[w.idx]?.main && !results[w.idx]?.bonus);
+  const total = mainCorrect + bonusCorrect;
+  $("resultEmoji").textContent = total === 20 ? "🏆" : total >= 15 ? "🥇" : total >= 10 ? "🏒" : "💪";
+  $("resultTitle").textContent = mainCorrect === 20 ? "Perfect Game — Shutout Win!" : "Final Buzzer!";
+  $("resultSummary").textContent = `${mainCorrect}/20 in regulation` + (mainCorrect < 20 ? ` + ${bonusCorrect} in overtime = ${total}/20 words spelled correctly` : "");
+  $("resultBody").innerHTML = words.map((w, i) => {
+    const r = results[w.idx] || {};
+    const reg = r.main ? '<span class="ok">✅ Goal</span>' : '<span class="no">❌ Saved</span>';
+    const ot = r.main ? "—" : (r.bonus ? '<span class="bonus-tag">✅ OT Goal</span>' : '<span class="no">❌ Saved</span>');
+    return `<tr><td>${i + 1}</td><td><b></b></td><td>${reg}</td><td>${ot}</td></tr>`;
+  }).join("");
+  [...$("resultBody").querySelectorAll("b")].forEach((b, i) => b.textContent = words[i].word);
+  $("practiceList").textContent = stillMissed.length
+    ? "📋 Words to practice: " + stillMissed.map(w => w.word).join(", ")
+    : "🎉 Every word was spelled correctly by the end of the game!";
+  show("results");
+}
+
+// ---------- Wiring ----------
+buildSetup(loadWords());
+$("resetDefaults").onclick = () => buildSetup(DEFAULTS.map(r => r.slice()));
+$("clearAll").onclick = () => buildSetup(Array.from({ length: 20 }, () => ["", ""]));
+$("startBtn").onclick = () => {
+  const list = readSetup();
+  const missingWord = list.findIndex(([w]) => !w);
+  if (missingWord >= 0) { $("setupMsg").textContent = `⚠️ Word #${missingWord + 1} is empty.`; return; }
+  const missingSent = list.findIndex(([, s]) => !s);
+  if (missingSent >= 0) { $("setupMsg").textContent = `⚠️ Sentence #${missingSent + 1} is empty.`; return; }
+  const noBlank = list.findIndex(([w, s]) => !/_{2,}/.test(s) && !blankRegex(w).test(s));
+  if (noBlank >= 0) { $("setupMsg").textContent = `⚠️ Sentence #${noBlank + 1} doesn't contain the word "${list[noBlank][0]}". Include the word or use ___ for the blank.`; return; }
+  $("setupMsg").textContent = "";
+  saveWords(list);
+  startGame(list, $("shuffle").checked);
+};
+$("sayBoth").onclick = () => runAudio(async () => {
+  const w = queue[pos];
+  await sayWord(w.word); await pause(600);
+  await speak(spokenSentence(w.word, w.sentence)); await pause(500);
+  await sayWord(w.word);
+});
+$("sayWord").onclick = () => runAudio(() => sayWord(queue[pos].word));
+$("saySentence").onclick = () => runAudio(() => speak(spokenSentence(queue[pos].word, queue[pos].sentence)));
+function reveal() {
+  const w = queue[pos];
+  $("revealWord").textContent = w.word;
+  $("mwLink").href = "https://www.merriam-webster.com/dictionary/" + encodeURIComponent(w.word.toLowerCase());
+  $("preReveal").classList.add("hidden"); $("postReveal").classList.remove("hidden");
+}
+$("revealBtn").onclick = reveal;
+$("cover").onclick = reveal;
+$("yesBtn").onclick = () => shoot(true);
+$("noBtn").onclick = () => shoot(false);
+$("nextBtn").onclick = next;
+$("startBonus").onclick = startBonus;
+renderSoundBtn();
+$("soundBtn").onclick = () => {
+  soundOn = !soundOn; renderSoundBtn();
+  try { localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off"); } catch (e) {}
+  if (soundOn) sfx.slap();
+};
+$("playAgain").onclick = () => startGame(words.map(w => [w.word, w.sentence]), $("shuffle").checked);
+$("editWords").onclick = () => show("setup");
+if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};
+</script>
+</body>
+</html>
